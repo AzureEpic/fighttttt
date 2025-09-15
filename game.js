@@ -171,3 +171,68 @@ scene.onBeforeRenderObservable.add(() => {
     if (inputMap["d"]) player.position.x += speed;
 });
 
+let playerAttackCooldown = 0;
+const PLAYER_ATTACK_RANGE = 2;
+const PLAYER_ATTACK_DAMAGE = 20;
+
+scene.onBeforeRenderObservable.add(() => {
+    // Cooldown tick
+    if (playerAttackCooldown > 0) playerAttackCooldown -= engine.getDeltaTime();
+
+    if (inputMap[" "]) { // spacebar
+        if (playerAttackCooldown <= 0) {
+            const distanceToNpc = BABYLON.Vector3.Distance(player.position, npc.position);
+            if (distanceToNpc <= PLAYER_ATTACK_RANGE) {
+                npcHealth -= PLAYER_ATTACK_DAMAGE;
+                displayNpcComment(getRandomComment(npcComments.onTakeDamage));
+                console.log(`NPC health: ${npcHealth}`);
+
+                if (npcHealth <= 0) {
+                    npc.dispose(); // remove npc when dead
+                    console.log("NPC defeated!");
+                }
+            } else {
+                displayNpcComment(getRandomComment(npcComments.onPlayerMiss));
+            }
+
+            playerAttackCooldown = 1000; // 1 second cooldown
+        }
+    }
+});
+
+let playerHealth = 100;
+let npcAttackCooldown = 0;
+const NPC_ATTACK_DAMAGE = 10;
+
+function runNpcAI() {
+    const distanceToPlayer = BABYLON.Vector3.Distance(npc.position, player.position);
+
+    // ... your existing state transitions ...
+
+    // State Actions
+    const speed = 0.05;
+    switch (npcState) {
+        case "CHASING":
+            const direction = player.position.subtract(npc.position).normalize();
+            npc.position.addInPlace(direction.scale(speed));
+            npc.lookAt(player.position);
+            break;
+
+        case "ATTACKING":
+            if (npcAttackCooldown <= 0) {
+                playerHealth -= NPC_ATTACK_DAMAGE;
+                console.log(`Player health: ${playerHealth}`);
+                npcAttackCooldown = 1000; // 1 sec cooldown
+            }
+            break;
+    }
+}
+scene.onBeforeRenderObservable.add(() => {
+    runNpcAI();
+    if (npcAttackCooldown > 0) npcAttackCooldown -= engine.getDeltaTime();
+});
+function flashMesh(mesh) {
+    const oldColor = mesh.material.diffuseColor.clone();
+    mesh.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+    setTimeout(() => { mesh.material.diffuseColor = oldColor; }, 200);
+}
