@@ -28,3 +28,120 @@ engine.runRenderLoop(function () {
 window.addEventListener("resize", function () {
     engine.resize();
 });
+
+
+// Add this inside your createScene function
+
+// Player
+const player = BABYLON.MeshBuilder.CreateSphere("player", {diameter: 1}, scene);
+player.position = new BABYLON.Vector3(-5, 0.5, 0);
+const playerMaterial = new BABYLON.StandardMaterial("playerMat", scene);
+playerMaterial.diffuseColor = new BABYLON.Color3(0, 1, 0); // Green
+player.material = playerMaterial;
+
+// NPC
+const npc = BABYLON.MeshBuilder.CreateBox("npc", {size: 1}, scene);
+npc.position = new BABYLON.Vector3(5, 0.5, 0);
+const npcMaterial = new BABYLON.StandardMaterial("npcMat", scene);
+npcMaterial.diffuseColor = new BABYLON.Color3(1, 0, 0); // Red
+npc.material = npcMaterial;
+
+
+
+
+
+
+// --- AI and Combat Logic ---
+
+let npcState = "IDLE";
+const SIGHT_DISTANCE = 10;
+const ATTACK_RANGE = 1.5;
+
+// NPC health and stats
+let npcHealth = 100;
+
+// This function will contain all our AI logic
+function runNpcAI() {
+    const distanceToPlayer = BABYLON.Vector3.Distance(npc.position, player.position);
+
+    // State Transitions
+    switch (npcState) {
+        case "IDLE":
+            if (distanceToPlayer < SIGHT_DISTANCE) {
+                changeNpcState("CHASING");
+            }
+            break;
+
+        case "CHASING":
+            if (distanceToPlayer <= ATTACK_RANGE) {
+                changeNpcState("ATTACKING");
+            } else if (distanceToPlayer > SIGHT_DISTANCE) {
+                changeNpcState("IDLE");
+            }
+            break;
+
+        case "ATTACKING":
+            if (distanceToPlayer > ATTACK_RANGE) {
+                changeNpcState("CHASING");
+            }
+            // Add a cooldown to attacks later
+            break;
+    }
+
+    // State Actions
+    const speed = 0.05;
+    switch (npcState) {
+        case "CHASING":
+            // Move towards the player
+            const direction = player.position.subtract(npc.position).normalize();
+            npc.position.addInPlace(direction.scale(speed));
+            npc.lookAt(player.position); // Make the NPC face the player
+            break;
+
+        case "ATTACKING":
+            // For now, just stop moving
+            // In a real game, you'd trigger an attack animation
+            break;
+    }
+}
+
+// Update the AI on every frame
+scene.onBeforeRenderObservable.add(() => {
+    runNpcAI();
+});
+
+
+
+const npcComments = {
+    onStateChange: {
+        IDLE: ["Guess it was nothing...", "Where did they go?", "I'll just wait here."],
+        CHASING: ["I see you!", "You can't hide!", "Get over here!"],
+        ATTACKING: ["Prepare to fight!", "This ends now!", "Taste my steel!"]
+    },
+    onTakeDamage: ["Ouch!", "A lucky hit!", "You'll pay for that!"],
+    onPlayerMiss: ["Too slow!", "Is that all you've got?", "You missed!"]
+};
+
+
+function displayNpcComment(comment) {
+    console.log(`NPC says: "${comment}"`);
+    // In a real game, you would update a UI element here.
+}
+
+function getRandomComment(commentArray) {
+    const index = Math.floor(Math.random() * commentArray.length);
+    return commentArray[index];
+}
+
+
+function changeNpcState(newState) {
+    if (npcState === newState) return; // Don't re-trigger if state is the same
+
+    console.log(`NPC state changed from ${npcState} to ${newState}`);
+    npcState = newState;
+
+    const comments = npcComments.onStateChange[newState];
+    if (comments) {
+        displayNpcComment(getRandomComment(comments));
+    }
+}
