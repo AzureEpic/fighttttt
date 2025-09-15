@@ -145,3 +145,29 @@ function changeNpcState(newState) {
         displayNpcComment(getRandomComment(comments));
     }
 }
+
+// Add this inside createScene() after creating player
+const inputMap = {};
+scene.actionManager = new BABYLON.ActionManager(scene);
+
+scene.actionManager.registerAction(
+    new BABYLON.ExecuteCodeAction(
+        BABYLON.ActionManager.OnKeyDownTrigger,
+        (evt) => { inputMap[evt.sourceEvent.key] = evt.sourceEvent.type == "keydown"; }
+    )
+);
+scene.actionManager.registerAction(
+    new BABYLON.ExecuteCodeAction(
+        BABYLON.ActionManager.OnKeyUpTrigger,
+        (evt) => { inputMap[evt.sourceEvent.key] = evt.sourceEvent.type == "keydown"; }
+    )
+);
+
+scene.onBeforeRenderObservable.add(() => {
+    const speed = 0.1;
+    if (inputMap["w"]) player.position.z += speed;
+    if (inputMap["s"]) player.position.z -= speed;
+    if (inputMap["a"]) player.position.x -= speed;
+    if (inputMap["d"]) player.position.x += speed;
+});
+
